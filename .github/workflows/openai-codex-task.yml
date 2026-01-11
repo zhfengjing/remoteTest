@@ -91,17 +91,23 @@ jobs:
         if: steps.check-changes.outputs.has_changes == 'true'
         run: |
           # 提交变更
-          git commit -m "$(cat <<'EOF'
-          🤖 Implement: ${{ env.TASK_TITLE }}
+          cat > /tmp/commit_msg.txt <<'EOF'
+🤖 Implement:
+EOF
+          echo "${{ env.TASK_TITLE }}" >> /tmp/commit_msg.txt
+          cat >> /tmp/commit_msg.txt <<'EOF'
 
-          Task executed by OpenAI Codex (GPT-4)
+Task executed by OpenAI Codex (GPT-4)
 
-          $(cat task.md)
+EOF
+          cat task.md >> /tmp/commit_msg.txt
+          cat >> /tmp/commit_msg.txt <<'EOF'
 
-          ---
-          Co-Authored-By: OpenAI Codex <codex@openai.com>
-          EOF
-          )"
+---
+Co-Authored-By: OpenAI Codex <codex@openai.com>
+EOF
+
+          git commit -F /tmp/commit_msg.txt
 
           # Push 到当前分支
           git push origin ${{ env.CURRENT_BRANCH }}
@@ -130,7 +136,7 @@ jobs:
 ```
 EOF
             cat task.md >> /tmp/pr_body.md
-            cat >> /tmp/pr_body.md <<EOF
+            cat >> /tmp/pr_body.md <<'EOF'
 ```
 
 ---
@@ -138,23 +144,36 @@ EOF
 ## 🤖 执行信息
 
 - **执行者**: OpenAI Codex (GPT-4)
-- **源分支**: \`${{ env.CURRENT_BRANCH }}\`
-- **目标分支**: \`main\`
-- **更新时间**: $(date -u +"%Y-%m-%d %H:%M:%S UTC")
+- **源分支**: `
+EOF
+            echo -n "${{ env.CURRENT_BRANCH }}" >> /tmp/pr_body.md
+            cat >> /tmp/pr_body.md <<'EOF'
+`
+- **目标分支**: `main`
+- **更新时间**:
+EOF
+            date -u +"%Y-%m-%d %H:%M:%S UTC" >> /tmp/pr_body.md
+            cat >> /tmp/pr_body.md <<'EOF'
 
 ---
 
 ## 📁 变更文件
 
-\`\`\`
-$(git diff HEAD~1 --name-only)
-\`\`\`
+```
+EOF
+            git diff HEAD~1 --name-only >> /tmp/pr_body.md
+            cat >> /tmp/pr_body.md <<'EOF'
+```
 
 ---
 
 ## 🔗 相关链接
 
-- [Workflow Run](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
+- [Workflow Run](
+EOF
+            echo -n "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}" >> /tmp/pr_body.md
+            cat >> /tmp/pr_body.md <<'EOF'
+)
 
 ---
 
@@ -173,7 +192,7 @@ EOF
 ```
 EOF
             cat task.md >> /tmp/pr_body.md
-            cat >> /tmp/pr_body.md <<EOF
+            cat >> /tmp/pr_body.md <<'EOF'
 ```
 
 ---
@@ -181,23 +200,36 @@ EOF
 ## 🤖 执行信息
 
 - **执行者**: OpenAI Codex (GPT-4)
-- **源分支**: \`${{ env.CURRENT_BRANCH }}\`
-- **目标分支**: \`main\`
-- **执行时间**: $(date -u +"%Y-%m-%d %H:%M:%S UTC")
+- **源分支**: `
+EOF
+            echo -n "${{ env.CURRENT_BRANCH }}" >> /tmp/pr_body.md
+            cat >> /tmp/pr_body.md <<'EOF'
+`
+- **目标分支**: `main`
+- **执行时间**:
+EOF
+            date -u +"%Y-%m-%d %H:%M:%S UTC" >> /tmp/pr_body.md
+            cat >> /tmp/pr_body.md <<'EOF'
 
 ---
 
 ## 📁 变更文件
 
-\`\`\`
-$(git diff HEAD~1 --name-only)
-\`\`\`
+```
+EOF
+            git diff HEAD~1 --name-only >> /tmp/pr_body.md
+            cat >> /tmp/pr_body.md <<'EOF'
+```
 
 ---
 
 ## 🔗 相关链接
 
-- [Workflow Run](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
+- [Workflow Run](
+EOF
+            echo -n "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}" >> /tmp/pr_body.md
+            cat >> /tmp/pr_body.md <<'EOF'
+)
 
 ---
 
@@ -217,17 +249,23 @@ EOF
       - name: Generate workflow summary
         if: steps.check-changes.outputs.has_changes == 'true'
         run: |
-          cat >> $GITHUB_STEP_SUMMARY <<EOF
+          cat >> $GITHUB_STEP_SUMMARY <<'EOF'
 ## 🎉 任务执行完成
 
 ### 📋 任务
-\`\`\`
-$(cat task.md)
-\`\`\`
+```
+EOF
+          cat task.md >> $GITHUB_STEP_SUMMARY
+          cat >> $GITHUB_STEP_SUMMARY <<'EOF'
+```
 
 ### ✅ 执行状态
 - **执行**: ✅ 完成
-- **提交**: ✅ 已推送到 \`${{ env.CURRENT_BRANCH }}\`
+- **提交**: ✅ 已推送到 `
+EOF
+          echo -n "${{ env.CURRENT_BRANCH }}" >> $GITHUB_STEP_SUMMARY
+          cat >> $GITHUB_STEP_SUMMARY <<'EOF'
+`
 - **PR**: ✅ 已创建/更新
 
 ### 🔗 下一步
@@ -236,22 +274,28 @@ $(cat task.md)
 3. 合并或请求修改
 
 ---
-**分支**: \`${{ env.CURRENT_BRANCH }}\`
+**分支**: `
+EOF
+          echo -n "${{ env.CURRENT_BRANCH }}" >> $GITHUB_STEP_SUMMARY
+          cat >> $GITHUB_STEP_SUMMARY <<'EOF'
+`
 **执行者**: OpenAI Codex (GPT-4)
 EOF
 
       - name: No changes summary
         if: steps.check-changes.outputs.has_changes == 'false'
         run: |
-          cat >> $GITHUB_STEP_SUMMARY <<EOF
+          cat >> $GITHUB_STEP_SUMMARY <<'EOF'
 ## ⚠️ 未检测到代码变更
 
 OpenAI Codex 执行了任务但没有产生代码变更。
 
 ### 📋 任务内容
-\`\`\`
-$(cat task.md)
-\`\`\`
+```
+EOF
+          cat task.md >> $GITHUB_STEP_SUMMARY
+          cat >> $GITHUB_STEP_SUMMARY <<'EOF'
+```
 
 ### 可能原因
 - 任务是信息查询类的，不需要修改代码
