@@ -1,0 +1,257 @@
+name: OpenAI Codex Auto Task Execution
+
+on:
+  push:
+    paths:
+      - 'task.md'
+    branches-ignore:
+      - 'main'
+
+jobs:
+  execute-task:
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: write
+      pull-requests: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        working-directory: .github/scripts/openai
+        run: npm install
+
+      - name: Configure Git
+        run: |
+          git config user.name "OpenAI Codex Bot"
+          git config user.email "codex-bot@users.noreply.github.com"
+
+      - name: Read task.md
+        id: read-task
+        run: |
+          if [ ! -f task.md ]; then
+            echo "❌ task.md not found"
+            exit 1
+          fi
+
+          echo "📋 Task content:"
+          cat task.md
+
+          # 保存任务标题
+          TASK_TITLE=$(head -n 1 task.md | sed 's/^#* *//')
+          echo "TASK_TITLE=$TASK_TITLE" >> $GITHUB_ENV
+
+          # 保存当前分支
+          CURRENT_BRANCH=$(git branch --show-current)
+          echo "CURRENT_BRANCH=$CURRENT_BRANCH" >> $GITHUB_ENV
+
+      - name: 🤖 Execute task with OpenAI Codex
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        working-directory: .github/scripts/openai
+        run: |
+          echo "======================================"
+          echo "🚀 Starting OpenAI Codex execution..."
+          echo "======================================"
+
+          node execute-task.js
+
+          echo "✅ Task execution completed"
+
+      - name: Check for code changes
+        id: check-changes
+        run: |
+          # 添加所有变更（排除 task.md）
+          git add .
+          git reset task.md 2>/dev/null || true
+
+          if git diff --staged --quiet; then
+            echo "has_changes=false" >> $GITHUB_OUTPUT
+            echo "⚠️ No code changes detected"
+          else
+            echo "has_changes=true" >> $GITHUB_OUTPUT
+            echo "✅ Code changes detected"
+            echo ""
+            echo "Changed files:"
+            git diff --staged --name-only
+          fi
+
+      - name: Commit and push changes
+        if: steps.check-changes.outputs.has_changes == 'true'
+        run: |
+          # 提交变更
+          git commit -m "🤖 Implement: ${{ env.TASK_TITLE }}
+
+Task executed by OpenAI Codex (GPT-4)
+
+$(cat task.md)
+
+---
+Co-Authored-By: OpenAI Codex <codex@openai.com>"
+
+          # Push 到当前分支
+          git push origin ${{ env.CURRENT_BRANCH }}
+
+          echo "✅ Changes pushed to ${{ env.CURRENT_BRANCH }}"
+
+      - name: Create Pull Request
+        if: steps.check-changes.outputs.has_changes == 'true'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          echo "======================================"
+          echo "📝 Creating Pull Request..."
+          echo "======================================"
+
+          # 检查是否已存在 PR
+          EXISTING_PR=$(gh pr list --head ${{ env.CURRENT_BRANCH }} --json number --jq '.[0].number')
+
+          if [ -n "$EXISTING_PR" ]; then
+            echo "ℹ️ PR already exists: #$EXISTING_PR"
+
+            # 更新 PR 描述
+            gh pr edit $EXISTING_PR --body "$(cat <<EOF
+## 📋 任务说明
+
+\`\`\`
+$(cat task.md)
+\`\`\`
+
+---
+
+## 🤖 执行信息
+
+- **执行者**: OpenAI Codex (GPT-4)
+- **源分支**: \`${{ env.CURRENT_BRANCH }}\`
+- **目标分支**: \`main\`
+- **更新时间**: $(date -u +"%Y-%m-%d %H:%M:%S UTC")
+
+---
+
+## 📁 变更文件
+
+\`\`\`
+$(git diff HEAD~1 --name-only)
+\`\`\`
+
+---
+
+## 🔗 相关链接
+
+- [Workflow Run](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
+
+---
+
+<sub>🤖 自动化流程: task.md → OpenAI Codex → Auto PR</sub>
+<sub>⚡ 由 [OpenAI Codex](https://openai.com/blog/openai-codex) 驱动</sub>
+EOF
+)"
+
+            echo "✅ PR #$EXISTING_PR updated"
+          else
+            # 创建新 PR
+            gh pr create \
+              --base main \
+              --head ${{ env.CURRENT_BRANCH }} \
+              --title "🤖 [Codex] ${{ env.TASK_TITLE }}" \
+              --body "$(cat <<EOF
+## 📋 任务说明
+
+\`\`\`
+$(cat task.md)
+\`\`\`
+
+---
+
+## 🤖 执行信息
+
+- **执行者**: OpenAI Codex (GPT-4)
+- **源分支**: \`${{ env.CURRENT_BRANCH }}\`
+- **目标分支**: \`main\`
+- **执行时间**: $(date -u +"%Y-%m-%d %H:%M:%S UTC")
+
+---
+
+## 📁 变更文件
+
+\`\`\`
+$(git diff HEAD~1 --name-only)
+\`\`\`
+
+---
+
+## 🔗 相关链接
+
+- [Workflow Run](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
+
+---
+
+<sub>🤖 自动化流程: task.md → OpenAI Codex → Auto PR</sub>
+<sub>⚡ 由 [OpenAI Codex](https://openai.com/blog/openai-codex) 驱动</sub>
+EOF
+)"
+
+            echo "✅ New PR created!"
+          fi
+
+      - name: Generate workflow summary
+        if: steps.check-changes.outputs.has_changes == 'true'
+        run: |
+          cat >> $GITHUB_STEP_SUMMARY <<EOF
+## 🎉 任务执行完成
+
+### 📋 任务
+\`\`\`
+$(cat task.md)
+\`\`\`
+
+### ✅ 执行状态
+- **执行**: ✅ 完成
+- **提交**: ✅ 已推送到 \`${{ env.CURRENT_BRANCH }}\`
+- **PR**: ✅ 已创建/更新
+
+### 🔗 下一步
+1. 查看 Pull Requests 标签页
+2. 审阅代码变更
+3. 合并或请求修改
+
+---
+**分支**: \`${{ env.CURRENT_BRANCH }}\`
+**执行者**: OpenAI Codex (GPT-4)
+EOF
+
+      - name: No changes summary
+        if: steps.check-changes.outputs.has_changes == 'false'
+        run: |
+          cat >> $GITHUB_STEP_SUMMARY <<EOF
+## ⚠️ 未检测到代码变更
+
+OpenAI Codex 执行了任务但没有产生代码变更。
+
+### 📋 任务内容
+\`\`\`
+$(cat task.md)
+\`\`\`
+
+### 可能原因
+- 任务是信息查询类的，不需要修改代码
+- 任务描述不够清晰，Codex 无法理解
+- Codex 认为不需要做任何修改
+- 任务可能需要更详细的说明
+
+### 建议
+- 使用更清晰、具体的任务描述
+- 明确指出需要修改的文件
+- 提供代码示例或参考
+EOF

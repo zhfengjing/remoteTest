@@ -1,0 +1,21 @@
+{
+  "name": "openai-codex-task-executor",
+  "version": "1.0.0",
+  "description": "Automated task execution using OpenAI Codex",
+  "main": "execute-task.js",
+  "scripts": {
+    "execute": "node execute-task.js"
+  },
+  "keywords": [
+    "openai",
+    "codex",
+    "gpt-4",
+    "automation",
+    "github-actions"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "openai": "^4.67.3"
+  }
+}

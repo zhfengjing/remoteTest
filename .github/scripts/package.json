@@ -1,0 +1,20 @@
+{
+  "name": "claude-code-review-scripts",
+  "version": "1.0.0",
+  "description": "GitHub Actions scripts for automated code review using Claude AI",
+  "main": "claude-review.js",
+  "scripts": {
+    "review": "node claude-review.js"
+  },
+  "keywords": [
+    "code-review",
+    "claude",
+    "anthropic",
+    "github-actions"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.32.1"
+  }
+}
