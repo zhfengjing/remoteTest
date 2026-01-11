@@ -91,14 +91,17 @@ jobs:
         if: steps.check-changes.outputs.has_changes == 'true'
         run: |
           # 提交变更
-          git commit -m "🤖 Implement: ${{ env.TASK_TITLE }}
+          git commit -m "$(cat <<'EOF'
+          🤖 Implement: ${{ env.TASK_TITLE }}
 
-Task executed by OpenAI Codex (GPT-4)
+          Task executed by OpenAI Codex (GPT-4)
 
-$(cat task.md)
+          $(cat task.md)
 
----
-Co-Authored-By: OpenAI Codex <codex@openai.com>"
+          ---
+          Co-Authored-By: OpenAI Codex <codex@openai.com>
+          EOF
+          )"
 
           # Push 到当前分支
           git push origin ${{ env.CURRENT_BRANCH }}
