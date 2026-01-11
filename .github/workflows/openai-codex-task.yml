@@ -124,12 +124,14 @@ jobs:
             echo "ℹ️ PR already exists: #$EXISTING_PR"
 
             # 更新 PR 描述
-            gh pr edit $EXISTING_PR --body "$(cat <<EOF
+            cat > /tmp/pr_body.md <<'EOF'
 ## 📋 任务说明
 
-\`\`\`
-$(cat task.md)
-\`\`\`
+```
+EOF
+            cat task.md >> /tmp/pr_body.md
+            cat >> /tmp/pr_body.md <<EOF
+```
 
 ---
 
@@ -159,21 +161,20 @@ $(git diff HEAD~1 --name-only)
 <sub>🤖 自动化流程: task.md → OpenAI Codex → Auto PR</sub>
 <sub>⚡ 由 [OpenAI Codex](https://openai.com/blog/openai-codex) 驱动</sub>
 EOF
-)"
+
+            gh pr edit $EXISTING_PR --body-file /tmp/pr_body.md
 
             echo "✅ PR #$EXISTING_PR updated"
           else
             # 创建新 PR
-            gh pr create \
-              --base main \
-              --head ${{ env.CURRENT_BRANCH }} \
-              --title "🤖 [Codex] ${{ env.TASK_TITLE }}" \
-              --body "$(cat <<EOF
+            cat > /tmp/pr_body.md <<'EOF'
 ## 📋 任务说明
 
-\`\`\`
-$(cat task.md)
-\`\`\`
+```
+EOF
+            cat task.md >> /tmp/pr_body.md
+            cat >> /tmp/pr_body.md <<EOF
+```
 
 ---
 
@@ -203,7 +204,12 @@ $(git diff HEAD~1 --name-only)
 <sub>🤖 自动化流程: task.md → OpenAI Codex → Auto PR</sub>
 <sub>⚡ 由 [OpenAI Codex](https://openai.com/blog/openai-codex) 驱动</sub>
 EOF
-)"
+
+            gh pr create \
+              --base main \
+              --head ${{ env.CURRENT_BRANCH }} \
+              --title "🤖 [Codex] ${{ env.TASK_TITLE }}" \
+              --body-file /tmp/pr_body.md
 
             echo "✅ New PR created!"
           fi
